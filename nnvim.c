@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -16,14 +17,6 @@
 // variables
 
 // structs
-struct editorConfig {
-    int screenRows;
-    int screenCols;
-    int cx;
-    int cy;
-    struct termios orig_termios;
-};
-
 struct editorConfig E;
 
 struct termios orig_termios;
@@ -32,6 +25,21 @@ typedef struct {
     char *b;
     int len;
 } abuf;
+
+typedef struct {
+    int len;
+    char *row;
+} erow;
+
+struct editorConfig {
+    int cx;
+    int cy;
+    int numrows;
+    int screenRows;
+    int screenCols;
+    erow rows;
+    struct termios orig_termios;
+};
 
 // enums
 enum editorKey{
@@ -57,6 +65,7 @@ void abFree(abuf *buf);
 void die(const char *s);
 void disableRawMode();
 void editorDrawRows(abuf *buf);
+void editorOpen();
 void editorProcessKeypressViewMode();
 void editorRefreshScreen();
 void enableRawMode();
@@ -188,16 +197,22 @@ void disableRawMode(){
 
 void editorDrawRows(abuf *buf){
     for (int y = 0; y < E.screenRows; y++){
-        abAppend(buf, "~", 1);
-        if (y == E.screenRows - 2){
+        if (y != E.screenRows - 1) abAppend(buf, "~", 1);
+        if (y == E.screenRows - 3){
             char xPos[10];
             int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
             abAppend(buf, xPos, xPosLen);
         }
-        if (y == E.screenRows - 1){
+        if (y == E.screenRows - 2){
             char yPos[10];
             int yPosLen = snprintf(yPos, sizeof(yPos), "y:%d", E.cy);
             abAppend(buf, yPos, yPosLen);
+        }
+        if (y == E.screenRows - 1){
+            int count = E.screenCols;
+            while (count --){
+                abAppend(buf, "\u2588", 4);
+            }
         }
         if (y == E.screenRows/3){
             char welcome[80];
@@ -215,6 +230,16 @@ void editorDrawRows(abuf *buf){
         }
         abAppend(buf, "\x1b[K", 3);
     }
+}
+
+void editorOpen(){
+    char *line = "hello world!";
+    ssize_t linelen = 13;
+    E.rows.len = linelen;
+    E.rows.row = malloc(linelen + 1); // TODO: perform errno checking on this malloc
+    memcpy(E.rows.row, line, linelen);
+    E.rows.row[linelen] = '\0';
+    E.numrows = 1;
 }
 
 void editorProcessKeypressViewMode(){
@@ -278,6 +303,7 @@ void initEditor(){
     if (getWindowSize(&E.screenRows, &E.screenCols) == -1) die("getWindowSize");
     E.cx = 0;
     E.cy = 0;
+    E.numrows = 0;
     write(STDOUT_FILENO, "\x1b[2J", 4);
 }
 
@@ -321,6 +347,8 @@ void moveCursor(int x, int y){
 int main(){
     enableRawMode();
     initEditor();
+    editorOpen();
+
     while (1){
         editorRefreshScreen();
         editorProcessKeypressViewMode();
