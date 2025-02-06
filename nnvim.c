@@ -225,6 +225,9 @@ void editorDrawRows(abuf *buf){
             }
             abAppend(buf, welcome, welcomelen);
         }
+        if (y == 0){
+            abAppend(buf, E.rows.row, E.rows.len);
+        }
         if (y < E.screenRows - 1){
             abAppend(buf, "\r\n", 2);
         }
@@ -240,6 +243,28 @@ void editorOpen(){
     memcpy(E.rows.row, line, linelen);
     E.rows.row[linelen] = '\0';
     E.numrows = 1;
+}
+
+void editorOpenFile(char* filename){
+    FILE *file = fopen(filename, "r");
+    if (!file) die("fopen");
+    
+    char* line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
+    linelen = getline(&line, &linecap, file);
+    if (linelen != -1){
+        while (linelen > 0 && (line[linelen-1] == '\n' || line[linelen-1] == '\r')){
+            linelen --;
+        }
+        E.rows.len = linelen;
+        E.rows.row = malloc(linelen+1);
+        memcpy(E.rows.row, line, linelen);
+        E.rows.row[linelen] = '\0';
+        E.numrows = 1;
+    }
+    free(line);
+    fclose(file);
 }
 
 void editorProcessKeypressViewMode(){
@@ -344,10 +369,13 @@ void moveCursor(int x, int y){
 }
 
 // main function
-int main(){
+int main(int argc, char* argv[]){
     enableRawMode();
     initEditor();
-    editorOpen();
+    
+    if (argc >= 2) {
+        editorOpenFile(argv[1]);
+    }
 
     while (1){
         editorRefreshScreen();
