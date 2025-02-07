@@ -214,7 +214,7 @@ void editorDrawRows(abuf *buf){
                 abAppend(buf, "\u2588", 4);
             }
         }
-        if (y == E.screenRows/3){
+        if (y == E.screenRows/3 && E.numrows == 0){
             char welcome[80];
             int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
             if (welcomelen > E.screenCols) welcomelen = E.screenCols;
