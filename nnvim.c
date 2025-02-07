@@ -333,6 +333,7 @@ void initEditor(){
 }
 
 void moveCursor(int x, int y){
+    // TODO: Refuse to move the cursors into the bottom bar or onto the tilde/line numbers
     // if we are moving the cursor to the right
     if (x > 0){
         // check to see if we are gonna move it outside of the screen
