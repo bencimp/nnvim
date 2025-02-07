@@ -214,7 +214,7 @@ void editorDrawRows(abuf *buf){
                 abAppend(buf, "\u2588", 4);
             }
         }
-        if (y == E.screenRows/3){
+        if (y == E.screenRows/3 && E.numrows == 0){
             char welcome[80];
             int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
             if (welcomelen > E.screenCols) welcomelen = E.screenCols;
@@ -333,6 +333,7 @@ void initEditor(){
 }
 
 void moveCursor(int x, int y){
+    // TODO: Refuse to move the cursors into the bottom bar or onto the tilde/line numbers
     // if we are moving the cursor to the right
     if (x > 0){
         // check to see if we are gonna move it outside of the screen
