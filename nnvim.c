@@ -37,7 +37,7 @@ struct editorConfig {
     int numrows;
     int screenRows;
     int screenCols;
-    erow rows;
+    erow *rows;
     struct termios orig_termios;
 };
 
@@ -64,8 +64,9 @@ void abAppend(abuf *buf, const char* in, int lenIn);
 void abFree(abuf *buf);
 void die(const char *s);
 void disableRawMode();
+void editorAppendRow(char *s, size_t len);
 void editorDrawRows(abuf *buf);
-void editorOpen();
+void editorOpenFile(char* filename);
 void editorProcessKeypressViewMode();
 void editorRefreshScreen();
 void enableRawMode();
@@ -195,54 +196,61 @@ void disableRawMode(){
     }
 }
 
+void editorAppendRow(char *s, size_t len){
+    E.rows = realloc(E.rows, sizeof(erow) * (E.numrows + 1));
+
+    // append new row from input, null-terminate it
+    int pos = E.numrows;
+    E.rows[pos].len = len;
+    E.rows[pos].row = malloc(len + 1);
+    memcpy(E.rows[pos].row, s, len);
+    E.rows[pos].row[len] = '\0';
+    E.numrows ++;
+}
+
 void editorDrawRows(abuf *buf){
     for (int y = 0; y < E.screenRows; y++){
-        if (y != E.screenRows - 1) abAppend(buf, "~", 1);
-        if (y == E.screenRows - 3){
-            char xPos[10];
-            int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
-            abAppend(buf, xPos, xPosLen);
+        if (y >= E.numrows){
+            if (y != E.screenRows - 1) abAppend(buf, "~", 1);
+            // if (y == E.screenRows - 3){
+            //     char xPos[10];
+            //     int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
+            //     abAppend(buf, xPos, xPosLen);
+            // }
+            // if (y == E.screenRows - 2){
+            //     char yPos[10];
+            //     int yPosLen = snprintf(yPos, sizeof(yPos), "y:%d", E.cy);
+            //     abAppend(buf, yPos, yPosLen);
+            // }
+            // if (y == E.screenRows - 1){
+            //     int count = E.screenCols;
+            //     while (count --){
+            //         abAppend(buf, "\u2588", 4);
+            //     }
+            // }
+            // if (y == E.screenRows/3 && E.numrows == 0){
+            //     char welcome[80];
+            //     int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
+            //     if (welcomelen > E.screenCols) welcomelen = E.screenCols;
+            //     int diffCalc = (E.screenCols - welcomelen) / 2;
+            //     while (diffCalc >= 0){
+            //         diffCalc --; 
+            //         abAppend(buf, " ", 1);
+            //     }
+            //     abAppend(buf, welcome, welcomelen);
+            // }
         }
-        if (y == E.screenRows - 2){
-            char yPos[10];
-            int yPosLen = snprintf(yPos, sizeof(yPos), "y:%d", E.cy);
-            abAppend(buf, yPos, yPosLen);
+        else {
+            int len = E.rows[y].len;
+            if (len > E.screenCols) len = E.screenCols;
+            abAppend(buf, E.rows[y].row, len);
         }
-        if (y == E.screenRows - 1){
-            int count = E.screenCols;
-            while (count --){
-                abAppend(buf, "\u2588", 4);
-            }
-        }
-        if (y == E.screenRows/3 && E.numrows == 0){
-            char welcome[80];
-            int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
-            if (welcomelen > E.screenCols) welcomelen = E.screenCols;
-            int diffCalc = (E.screenCols - welcomelen) / 2;
-            while (diffCalc >= 0){
-                diffCalc --; 
-                abAppend(buf, " ", 1);
-            }
-            abAppend(buf, welcome, welcomelen);
-        }
-        if (y == 0){
-            abAppend(buf, E.rows.row, E.rows.len);
-        }
+        
+        abAppend(buf, "\x1b[K", 3);
         if (y < E.screenRows - 1){
             abAppend(buf, "\r\n", 2);
         }
-        abAppend(buf, "\x1b[K", 3);
     }
-}
-
-void editorOpen(){
-    char *line = "hello world!";
-    ssize_t linelen = 13;
-    E.rows.len = linelen;
-    E.rows.row = malloc(linelen + 1); // TODO: perform errno checking on this malloc
-    memcpy(E.rows.row, line, linelen);
-    E.rows.row[linelen] = '\0';
-    E.numrows = 1;
 }
 
 void editorOpenFile(char* filename){
@@ -252,16 +260,11 @@ void editorOpenFile(char* filename){
     char* line = NULL;
     size_t linecap = 0;
     ssize_t linelen;
-    linelen = getline(&line, &linecap, file);
-    if (linelen != -1){
+    while ((linelen = getline(&line, &linecap, file)) != -1) {        
         while (linelen > 0 && (line[linelen-1] == '\n' || line[linelen-1] == '\r')){
             linelen --;
         }
-        E.rows.len = linelen;
-        E.rows.row = malloc(linelen+1);
-        memcpy(E.rows.row, line, linelen);
-        E.rows.row[linelen] = '\0';
-        E.numrows = 1;
+        editorAppendRow(line, linecap);
     }
     free(line);
     fclose(file);
