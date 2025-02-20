@@ -212,33 +212,33 @@ void editorDrawRows(abuf *buf){
     for (int y = 0; y < E.screenRows; y++){
         if (y >= E.numrows){
             if (y != E.screenRows - 1) abAppend(buf, "~", 1);
-            // if (y == E.screenRows - 3){
-            //     char xPos[10];
-            //     int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
-            //     abAppend(buf, xPos, xPosLen);
-            // }
-            // if (y == E.screenRows - 2){
-            //     char yPos[10];
-            //     int yPosLen = snprintf(yPos, sizeof(yPos), "y:%d", E.cy);
-            //     abAppend(buf, yPos, yPosLen);
-            // }
-            // if (y == E.screenRows - 1){
-            //     int count = E.screenCols;
-            //     while (count --){
-            //         abAppend(buf, "\u2588", 4);
-            //     }
-            // }
-            // if (y == E.screenRows/3 && E.numrows == 0){
-            //     char welcome[80];
-            //     int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
-            //     if (welcomelen > E.screenCols) welcomelen = E.screenCols;
-            //     int diffCalc = (E.screenCols - welcomelen) / 2;
-            //     while (diffCalc >= 0){
-            //         diffCalc --; 
-            //         abAppend(buf, " ", 1);
-            //     }
-            //     abAppend(buf, welcome, welcomelen);
-            // }
+            if (y == E.screenRows - 3){
+                char xPos[10];
+                int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
+                abAppend(buf, xPos, xPosLen);
+            }
+            if (y == E.screenRows - 2){
+                char yPos[10];
+                int yPosLen = snprintf(yPos, sizeof(yPos), "y:%d", E.cy);
+                abAppend(buf, yPos, yPosLen);
+            }
+            if (y == E.screenRows - 1){
+                int count = E.screenCols;
+                while (count --){
+                    abAppend(buf, "\u2588", 4);
+                }
+            }
+            if (y == E.screenRows/3 && E.numrows == 0){
+                char welcome[80];
+                int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
+                if (welcomelen > E.screenCols) welcomelen = E.screenCols;
+                int diffCalc = (E.screenCols - welcomelen) / 2;
+                while (diffCalc >= 0){
+                    diffCalc --; 
+                    abAppend(buf, " ", 1);
+                }
+                abAppend(buf, welcome, welcomelen);
+            }
         }
         else {
             int len = E.rows[y].len;
