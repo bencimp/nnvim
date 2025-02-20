@@ -264,10 +264,10 @@ void editorOpenFile(char* filename){
         while (linelen > 0 && (line[linelen-1] == '\n' || line[linelen-1] == '\r')){
             linelen --;
         }
-        editorAppendRow(line, linecap);
+        editorAppendRow(line, linelen);
     }
     free(line);
-    fclose(file);
+    fclose(file); 
 }
 
 void editorProcessKeypressViewMode(){
