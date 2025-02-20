@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct {
     int len;
-    char *row;
+    char *data;
 } erow;
 
 struct editorConfig {
@@ -226,7 +226,7 @@ void editorDrawRows(abuf *buf){
             abAppend(buf, welcome, welcomelen);
         }
         if (y == 0){
-            abAppend(buf, E.rows.row, E.rows.len);
+            abAppend(buf, E.rows.data, E.rows.len);
         }
         if (y < E.screenRows - 1){
             abAppend(buf, "\r\n", 2);
@@ -239,9 +239,9 @@ void editorOpen(){
     char *line = "hello world!";
     ssize_t linelen = 13;
     E.rows.len = linelen;
-    E.rows.row = malloc(linelen + 1); // TODO: perform errno checking on this malloc
-    memcpy(E.rows.row, line, linelen);
-    E.rows.row[linelen] = '\0';
+    E.rows.data = malloc(linelen + 1); // TODO: perform errno checking on this malloc
+    memcpy(E.rows.data, line, linelen);
+    E.rows.data[linelen] = '\0';
     E.numrows = 1;
 }
 
@@ -258,9 +258,9 @@ void editorOpenFile(char* filename){
             linelen --;
         }
         E.rows.len = linelen;
-        E.rows.row = malloc(linelen+1);
-        memcpy(E.rows.row, line, linelen);
-        E.rows.row[linelen] = '\0';
+        E.rows.data = malloc(linelen+1);
+        memcpy(E.rows.data, line, linelen);
+        E.rows.data[linelen] = '\0';
         E.numrows = 1;
     }
     free(line);
