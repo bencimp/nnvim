@@ -344,6 +344,8 @@ void initEditor(){
 }
 
 void moveCursor(int x, int y){
+    // this code is futureproofed in case I want to implement a "go fast in a direction in a line" that isn't just snapping to part of a line.
+    // if x > 0, we want to move the cursor right (i.e., away from x=0, which is the left side of the screen)
     if (x > 0){
         if (E.cx + 1 > E.terminalCols){
             if (E.cy <= (E.terminalRows - 1)){
@@ -355,6 +357,7 @@ void moveCursor(int x, int y){
             E.cx ++;
         }
     }
+    // if x <>> 0, we want to move the cursor left (i.e., towards x=0, which is the left side of the screen)
     if (x < 0){
         if (E.cx - 1 < 0){
             if (E.cy > 0) E.cx = E.terminalCols;
@@ -364,11 +367,13 @@ void moveCursor(int x, int y){
             E.cx --;
         }
     }
+    // if y > 0, we want to move the cursor down (i.e., away from y=0, which is the top of the screen)
     if (y > 0){
         if (E.cy + 1 <= (E.terminalRows - 1)){
             E.cy ++;
         }
-    }    
+    }
+    // if y < 0, we want to move the cursor up (i.e., towards y=0, which is the top of the screen)
     if (y < 0){
         if (E.cy - 1 >= 0){
             E.cy --;
