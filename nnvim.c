@@ -37,6 +37,8 @@ struct editorConfig {
     int numrows;
     int screenRows;
     int screenCols;
+    int scrollRow;
+    int scrollCol;
     erow *rows;
     struct termios orig_termios;
 };
