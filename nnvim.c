@@ -212,8 +212,9 @@ void editorAppendRow(char *s, size_t len){
 
 void editorDrawRows(abuf *buf){
     for (int y = 0; y < E.terminalRows; y++){
+        if (y != E.terminalRows - 1) abAppend(buf, "~", 1);
         if (y >= E.numrows){
-            if (y != E.terminalRows - 1) abAppend(buf, "~", 1);
+            // if (y != E.terminalRows - 1) abAppend(buf, "~", 1);
             if (y == E.terminalRows - 3){
                 char xPos[10];
                 int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
@@ -280,17 +281,21 @@ void editorProcessKeypressViewMode(){
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
+        // move the cursor to the left
         case 'j':
-            moveCursor(0, -1);
-            break;
-        case 'k':
             moveCursor(-1, 0);
             break;
-        case 'l':
+        // move the cursor to the right
+        case 'k':
             moveCursor(1, 0);
             break;
-        case ';':
+        // move the cursor to down
+        case 'l':
             moveCursor(0, 1);
+            break;
+        // move the cursor to up
+        case ';':
+            moveCursor(0, -1);
             break;
     }
 }
