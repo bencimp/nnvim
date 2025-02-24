@@ -35,8 +35,8 @@ struct editorConfig {
     int cx;
     int cy;
     int numrows;
-    int screenRows;
-    int screenCols;
+    int terminalRows;
+    int terminalCols;
     int scrollRow;
     int scrollCol;
     erow *rows;
@@ -211,30 +211,30 @@ void editorAppendRow(char *s, size_t len){
 }
 
 void editorDrawRows(abuf *buf){
-    for (int y = 0; y < E.screenRows; y++){
+    for (int y = 0; y < E.terminalRows; y++){
         if (y >= E.numrows){
-            if (y != E.screenRows - 1) abAppend(buf, "~", 1);
-            if (y == E.screenRows - 3){
+            if (y != E.terminalRows - 1) abAppend(buf, "~", 1);
+            if (y == E.terminalRows - 3){
                 char xPos[10];
                 int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
                 abAppend(buf, xPos, xPosLen);
             }
-            if (y == E.screenRows - 2){
+            if (y == E.terminalRows - 2){
                 char yPos[10];
                 int yPosLen = snprintf(yPos, sizeof(yPos), "y:%d", E.cy);
                 abAppend(buf, yPos, yPosLen);
             }
-            if (y == E.screenRows - 1){
-                int count = E.screenCols;
+            if (y == E.terminalRows - 1){
+                int count = E.terminalCols;
                 while (count --){
                     abAppend(buf, "\u2588", 4);
                 }
             }
-            if (y == E.screenRows/3 && E.numrows == 0){
+            if (y == E.terminalRows/3 && E.numrows == 0){
                 char welcome[80];
                 int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
-                if (welcomelen > E.screenCols) welcomelen = E.screenCols;
-                int diffCalc = (E.screenCols - welcomelen) / 2;
+                if (welcomelen > E.terminalCols) welcomelen = E.terminalCols;
+                int diffCalc = (E.terminalCols - welcomelen) / 2;
                 while (diffCalc >= 0){
                     diffCalc --; 
                     abAppend(buf, " ", 1);
@@ -244,12 +244,12 @@ void editorDrawRows(abuf *buf){
         }
         else {
             int len = E.rows[y].len;
-            if (len > E.screenCols) len = E.screenCols;
+            if (len > E.terminalCols) len = E.terminalCols;
             abAppend(buf, E.rows[y].row, len);
         }
         
         abAppend(buf, "\x1b[K", 3);
-        if (y < E.screenRows - 1){
+        if (y < E.terminalRows - 1){
             abAppend(buf, "\r\n", 2);
         }
     }
@@ -330,10 +330,12 @@ void enableRawMode(){
 }
 
 void initEditor(){
-    if (getWindowSize(&E.screenRows, &E.screenCols) == -1) die("getWindowSize");
+    if (getWindowSize(&E.terminalRows, &E.terminalCols) == -1) die("getWindowSize");
     E.cx = 0;
     E.cy = 0;
     E.numrows = 0;
+    E.scrollCol = 0;
+    E.scrollRow = 0;
     write(STDOUT_FILENO, "\x1b[2J", 4);
 }
 
@@ -342,9 +344,9 @@ void moveCursor(int x, int y){
     // if we are moving the cursor to the right
     if (x > 0){
         // check to see if we are gonna move it outside of the screen
-        if (E.cx + 1 > E.screenCols){
+        if (E.cx + 1 > E.terminalCols){
             // if we are moving off the right of the screen, slide back to the left of the screen
-            if (E.cy < E.screenRows){
+            if (E.cy < E.terminalRows){
                 E.cx = 0;
                 E.cy ++;
             }
@@ -355,7 +357,7 @@ void moveCursor(int x, int y){
     }
     if (x < 0){
         if (E.cx - 1 < 0){
-            if (E.cy > 0) E.cx = E.screenCols;
+            if (E.cy > 0) E.cx = E.terminalCols;
             E.cy = (E.cy - 1 < 0) ? 0 : E.cy - 1;
         }
         else {
@@ -363,7 +365,7 @@ void moveCursor(int x, int y){
         }
     }
     if (y > 0){
-        if (E.cy + 1 <= E.screenRows){
+        if (E.cy + 1 <= E.terminalRows){
             E.cy ++;
         }
     }    
