@@ -214,7 +214,6 @@ void editorDrawRows(abuf *buf){
     for (int y = 0; y < E.terminalRows; y++){
         if (y != E.terminalRows - 1) abAppend(buf, "~", 1);
         if (y >= E.numrows){
-            // if (y != E.terminalRows - 1) abAppend(buf, "~", 1);
             if (y == E.terminalRows - 3){
                 char xPos[10];
                 int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
@@ -345,13 +344,9 @@ void initEditor(){
 }
 
 void moveCursor(int x, int y){
-    // TODO: Refuse to move the cursors into the bottom bar or onto the tilde/line numbers
-    // if we are moving the cursor to the right
     if (x > 0){
-        // check to see if we are gonna move it outside of the screen
         if (E.cx + 1 > E.terminalCols){
-            // if we are moving off the right of the screen, slide back to the left of the screen
-            if (E.cy < E.terminalRows){
+            if (E.cy <= (E.terminalRows - 1)){
                 E.cx = 0;
                 E.cy ++;
             }
@@ -370,7 +365,7 @@ void moveCursor(int x, int y){
         }
     }
     if (y > 0){
-        if (E.cy + 1 <= E.terminalRows){
+        if (E.cy + 1 <= (E.terminalRows - 1)){
             E.cy ++;
         }
     }    
