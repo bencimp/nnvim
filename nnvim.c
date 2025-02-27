@@ -211,9 +211,11 @@ void editorAppendRow(char *s, size_t len){
 }
 
 void editorDrawRows(abuf *buf){
+    int printOffset;
     for (int y = 0; y < E.terminalRows; y++){
+        printOffset = y + E.scrollRow;
         if (y != E.terminalRows - 1) abAppend(buf, "~", 1);
-        if (y >= E.numrows){
+        if (printOffset >= E.numrows){
             if (y == E.terminalRows - 3){
                 char xPos[10];
                 int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
@@ -243,9 +245,9 @@ void editorDrawRows(abuf *buf){
             }
         }
         else {
-            int len = E.rows[y].len;
+            int len = E.rows[printOffset].len;
             if (len > E.terminalCols) len = E.terminalCols;
-            abAppend(buf, E.rows[y].row, len);
+            abAppend(buf, E.rows[printOffset].row, len);
         }
         
         abAppend(buf, "\x1b[K", 3);
@@ -335,7 +337,7 @@ void enableRawMode(){
 
 void initEditor(){
     if (getWindowSize(&E.terminalRows, &E.terminalCols) == -1) die("getWindowSize");
-    E.cx = 0;
+    E.cx = 1;
     E.cy = 0;
     E.numrows = 0;
     E.scrollCol = 0;
@@ -351,7 +353,7 @@ void moveCursor(int x, int y){
         if (E.cx + 1 > E.terminalCols - 1){
             // adjust scrollCol here
             if (E.cy <= (E.terminalRows - 1)){
-                E.cx = 0;
+                E.cx = 1;
                 E.cy ++;
             }
         }
@@ -362,7 +364,7 @@ void moveCursor(int x, int y){
     // if x < 0, we want to move the cursor left (i.e., towards x=0, which is the left side of the screen)
     if (x < 0){
         // if we would move off the left of the current screen
-        if (E.cx - 1 < 0){
+        if (E.cx - 1 < 1){
             // adjust scrollCol here
             if (E.cy > 0) E.cx = E.terminalCols - 1;
             E.cy = (E.cy - 1 < 0) ? 0 : E.cy - 1;
@@ -373,10 +375,12 @@ void moveCursor(int x, int y){
     }
     // if y > 0, we want to move the cursor down (i.e., away from y=0, which is the top of the screen)
     if (y > 0){
-        // if we would move off the bottom of the current screen
-        if (E.cy + 1 <= (E.terminalRows - 1)){
-            // adjust scrollRow here
+        // if we would move off the bottom of the current screen (this is -2 instead of -1 so that we don't scroll onto the status bar)
+        if (E.cy + 1 <= (E.terminalRows - 2)){
             E.cy ++;
+        }
+        else {
+            E.scrollRow ++;
         }
     }
     // if y < 0, we want to move the cursor up (i.e., towards y=0, which is the top of the screen)
@@ -385,6 +389,9 @@ void moveCursor(int x, int y){
         if (E.cy - 1 >= 0){
             // adjust scrollRow here
             E.cy --;
+        }
+        else {
+            if (E.scrollRow > 0) E.scrollRow --;
         }
     }
 }
