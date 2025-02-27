@@ -347,7 +347,9 @@ void moveCursor(int x, int y){
     // this code is futureproofed in case I want to implement a "go fast in a direction in a line" that isn't just snapping to part of a line.
     // if x > 0, we want to move the cursor right (i.e., away from x=0, which is the left side of the screen)
     if (x > 0){
-        if (E.cx + 1 > E.terminalCols){
+        // if we would move off the right of the current screen
+        if (E.cx + 1 > E.terminalCols - 1){
+            // adjust scrollCol here
             if (E.cy <= (E.terminalRows - 1)){
                 E.cx = 0;
                 E.cy ++;
@@ -357,10 +359,12 @@ void moveCursor(int x, int y){
             E.cx ++;
         }
     }
-    // if x <>> 0, we want to move the cursor left (i.e., towards x=0, which is the left side of the screen)
+    // if x < 0, we want to move the cursor left (i.e., towards x=0, which is the left side of the screen)
     if (x < 0){
+        // if we would move off the left of the current screen
         if (E.cx - 1 < 0){
-            if (E.cy > 0) E.cx = E.terminalCols;
+            // adjust scrollCol here
+            if (E.cy > 0) E.cx = E.terminalCols - 1;
             E.cy = (E.cy - 1 < 0) ? 0 : E.cy - 1;
         }
         else {
@@ -369,13 +373,17 @@ void moveCursor(int x, int y){
     }
     // if y > 0, we want to move the cursor down (i.e., away from y=0, which is the top of the screen)
     if (y > 0){
+        // if we would move off the bottom of the current screen
         if (E.cy + 1 <= (E.terminalRows - 1)){
+            // adjust scrollRow here
             E.cy ++;
         }
     }
     // if y < 0, we want to move the cursor up (i.e., towards y=0, which is the top of the screen)
     if (y < 0){
+        // if we would move off the top of the current screen
         if (E.cy - 1 >= 0){
+            // adjust scrollRow here
             E.cy --;
         }
     }
