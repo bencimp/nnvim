@@ -245,9 +245,10 @@ void editorDrawRows(abuf *buf){
             }
         }
         else {
-            int len = E.rows[printOffset].len;
+            int len = E.rows[printOffset].len - E.scrollCol;
+            if (len < 0) len = 0;
             if (len > E.terminalCols) len = E.terminalCols;
-            abAppend(buf, E.rows[printOffset].row, len);
+            abAppend(buf, &E.rows[printOffset].row[E.scrollCol], len);
         }
         
         abAppend(buf, "\x1b[K", 3);
@@ -352,10 +353,11 @@ void moveCursor(int x, int y){
         // if we would move off the right of the current screen
         if (E.cx + 1 > E.terminalCols - 1){
             // adjust scrollCol here
-            if (E.cy <= (E.terminalRows - 1)){
-                E.cx = 1;
-                E.cy ++;
-            }
+            // if (E.cy <= (E.terminalRows - 1)){
+            //     E.cx = 1;
+            //     E.cy ++;
+            // } this code commented out for now since we aren't adding a hard edge limit, you can position the cursor outside of the file
+            E.scrollCol ++;
         }
         else {
             E.cx ++;
@@ -366,8 +368,9 @@ void moveCursor(int x, int y){
         // if we would move off the left of the current screen
         if (E.cx - 1 < 1){
             // adjust scrollCol here
-            if (E.cy > 0) E.cx = E.terminalCols - 1;
-            E.cy = (E.cy - 1 < 0) ? 0 : E.cy - 1;
+            // if (E.cy > 0) E.cx = E.terminalCols - 1;
+            // E.cy = (E.cy - 1 < 0) ? 0 : E.cy - 1; one, why did I write it this way, 2, commented out for now as we don't care about left to right scrolling
+            if (E.scrollCol > 0) E.scrollCol --;
         }
         else {
             E.cx --;
