@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct {
     int len;
-    char *row;
+    char *data;
 } erow;
 
 struct editorConfig {
