@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct {
     int len;
-    char *data;
+    char *row;
 } erow;
 
 struct editorConfig {
@@ -71,6 +71,7 @@ void editorDrawRows(abuf *buf);
 void editorOpenFile(char* filename);
 void editorProcessKeypressViewMode();
 void editorRefreshScreen();
+void editorSetOffset();
 void enableRawMode();
 void initEditor();
 void moveCursor(int x, int y);
@@ -316,6 +317,10 @@ void editorRefreshScreen(){
     write(STDOUT_FILENO, buf.b, buf.len);
     write(STDOUT_FILENO, "\x1b[?25h", 6);
     abFree(&buf);
+}
+
+void editorSetOffset(){
+    
 }
 
 void enableRawMode(){
