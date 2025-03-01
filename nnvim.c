@@ -35,9 +35,11 @@ struct editorConfig {
     int cx;
     int cy;
     int numrows;
-    int screenRows;
-    int screenCols;
-    erow rows;
+    int terminalRows;
+    int terminalCols;
+    int scrollRow;
+    int scrollCol;
+    erow *rows;
     struct termios orig_termios;
 };
 
@@ -64,8 +66,9 @@ void abAppend(abuf *buf, const char* in, int lenIn);
 void abFree(abuf *buf);
 void die(const char *s);
 void disableRawMode();
+void editorAppendRow(char *s, size_t len);
 void editorDrawRows(abuf *buf);
-void editorOpen();
+void editorOpenFile(char* filename);
 void editorProcessKeypressViewMode();
 void editorRefreshScreen();
 void enableRawMode();
@@ -195,54 +198,64 @@ void disableRawMode(){
     }
 }
 
-void editorDrawRows(abuf *buf){
-    for (int y = 0; y < E.screenRows; y++){
-        if (y != E.screenRows - 1) abAppend(buf, "~", 1);
-        if (y == E.screenRows - 3){
-            char xPos[10];
-            int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
-            abAppend(buf, xPos, xPosLen);
-        }
-        if (y == E.screenRows - 2){
-            char yPos[10];
-            int yPosLen = snprintf(yPos, sizeof(yPos), "y:%d", E.cy);
-            abAppend(buf, yPos, yPosLen);
-        }
-        if (y == E.screenRows - 1){
-            int count = E.screenCols;
-            while (count --){
-                abAppend(buf, "\u2588", 4);
-            }
-        }
-        if (y == E.screenRows/3 && E.numrows == 0){
-            char welcome[80];
-            int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
-            if (welcomelen > E.screenCols) welcomelen = E.screenCols;
-            int diffCalc = (E.screenCols - welcomelen) / 2;
-            while (diffCalc >= 0){
-                diffCalc --; 
-                abAppend(buf, " ", 1);
-            }
-            abAppend(buf, welcome, welcomelen);
-        }
-        if (y == 0){
-            abAppend(buf, E.rows.data, E.rows.len);
-        }
-        if (y < E.screenRows - 1){
-            abAppend(buf, "\r\n", 2);
-        }
-        abAppend(buf, "\x1b[K", 3);
-    }
+void editorAppendRow(char *s, size_t len){
+    E.rows = realloc(E.rows, sizeof(erow) * (E.numrows + 1));
+
+    // append new row from input, null-terminate it
+    int pos = E.numrows;
+    E.rows[pos].len = len;
+    E.rows[pos].row = malloc(len + 1);
+    memcpy(E.rows[pos].row, s, len);
+    E.rows[pos].row[len] = '\0';
+    E.numrows ++;
 }
 
-void editorOpen(){
-    char *line = "hello world!";
-    ssize_t linelen = 13;
-    E.rows.len = linelen;
-    E.rows.data = malloc(linelen + 1); // TODO: perform errno checking on this malloc
-    memcpy(E.rows.data, line, linelen);
-    E.rows.data[linelen] = '\0';
-    E.numrows = 1;
+void editorDrawRows(abuf *buf){
+    int printOffset;
+    for (int y = 0; y < E.terminalRows; y++){
+        printOffset = y + E.scrollRow;
+        if (y != E.terminalRows - 1) abAppend(buf, "~", 1);
+        if (printOffset >= E.numrows){
+            if (y == E.terminalRows - 3){
+                char xPos[10];
+                int xPosLen = snprintf(xPos, sizeof(xPos), "x:%d", E.cx);
+                abAppend(buf, xPos, xPosLen);
+            }
+            if (y == E.terminalRows - 2){
+                char yPos[10];
+                int yPosLen = snprintf(yPos, sizeof(yPos), "y:%d", E.cy);
+                abAppend(buf, yPos, yPosLen);
+            }
+            if (y == E.terminalRows - 1){
+                int count = E.terminalCols;
+                while (count --){
+                    abAppend(buf, "\u2588", 4);
+                }
+            }
+            if (y == E.terminalRows/3 && E.numrows == 0){
+                char welcome[80];
+                int welcomelen = snprintf(welcome, sizeof(welcome), "NNVIM %s", NNVIM_VERSION);
+                if (welcomelen > E.terminalCols) welcomelen = E.terminalCols;
+                int diffCalc = (E.terminalCols - welcomelen) / 2;
+                while (diffCalc >= 0){
+                    diffCalc --; 
+                    abAppend(buf, " ", 1);
+                }
+                abAppend(buf, welcome, welcomelen);
+            }
+        }
+        else {
+            int len = E.rows[printOffset].len - E.scrollCol;
+            if (len < 0) len = 0;
+            if (len > E.terminalCols) len = E.terminalCols;
+            abAppend(buf, &E.rows[printOffset].row[E.scrollCol], len);
+        }
+        
+        abAppend(buf, "\x1b[K", 3);
+        if (y < E.terminalRows - 1){
+            abAppend(buf, "\r\n", 2);
+        }
+    }
 }
 
 void editorOpenFile(char* filename){
@@ -252,19 +265,14 @@ void editorOpenFile(char* filename){
     char* line = NULL;
     size_t linecap = 0;
     ssize_t linelen;
-    linelen = getline(&line, &linecap, file);
-    if (linelen != -1){
+    while ((linelen = getline(&line, &linecap, file)) != -1) {        
         while (linelen > 0 && (line[linelen-1] == '\n' || line[linelen-1] == '\r')){
             linelen --;
         }
-        E.rows.len = linelen;
-        E.rows.data = malloc(linelen+1);
-        memcpy(E.rows.data, line, linelen);
-        E.rows.data[linelen] = '\0';
-        E.numrows = 1;
+        editorAppendRow(line, linelen);
     }
     free(line);
-    fclose(file);
+    fclose(file); 
 }
 
 void editorProcessKeypressViewMode(){
@@ -275,17 +283,21 @@ void editorProcessKeypressViewMode(){
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
+        // move the cursor to the left
         case 'j':
-            moveCursor(0, -1);
-            break;
-        case 'k':
             moveCursor(-1, 0);
             break;
-        case 'l':
+        // move the cursor to the right
+        case 'k':
             moveCursor(1, 0);
             break;
-        case ';':
+        // move the cursor to down
+        case 'l':
             moveCursor(0, 1);
+            break;
+        // move the cursor to up
+        case ';':
+            moveCursor(0, -1);
             break;
     }
 }
@@ -325,46 +337,64 @@ void enableRawMode(){
 }
 
 void initEditor(){
-    if (getWindowSize(&E.screenRows, &E.screenCols) == -1) die("getWindowSize");
-    E.cx = 0;
+    if (getWindowSize(&E.terminalRows, &E.terminalCols) == -1) die("getWindowSize");
+    E.cx = 1;
     E.cy = 0;
     E.numrows = 0;
+    E.scrollCol = 0;
+    E.scrollRow = 0;
     write(STDOUT_FILENO, "\x1b[2J", 4);
 }
 
 void moveCursor(int x, int y){
-    // TODO: Refuse to move the cursors into the bottom bar or onto the tilde/line numbers
-    // if we are moving the cursor to the right
+    // this code is futureproofed in case I want to implement a "go fast in a direction in a line" that isn't just snapping to part of a line.
+    // if x > 0, we want to move the cursor right (i.e., away from x=0, which is the left side of the screen)
     if (x > 0){
-        // check to see if we are gonna move it outside of the screen
-        if (E.cx + 1 > E.screenCols){
-            // if we are moving off the right of the screen, slide back to the left of the screen
-            if (E.cy < E.screenRows){
-                E.cx = 0;
-                E.cy ++;
-            }
+        // if we would move off the right of the current screen
+        if (E.cx + 1 > E.terminalCols - 1){
+            // adjust scrollCol here
+            // if (E.cy <= (E.terminalRows - 1)){
+            //     E.cx = 1;
+            //     E.cy ++;
+            // } this code commented out for now since we aren't adding a hard edge limit, you can position the cursor outside of the file
+            E.scrollCol ++;
         }
         else {
             E.cx ++;
         }
     }
+    // if x < 0, we want to move the cursor left (i.e., towards x=0, which is the left side of the screen)
     if (x < 0){
-        if (E.cx - 1 < 0){
-            if (E.cy > 0) E.cx = E.screenCols;
-            E.cy = (E.cy - 1 < 0) ? 0 : E.cy - 1;
+        // if we would move off the left of the current screen
+        if (E.cx - 1 < 1){
+            // adjust scrollCol here
+            // if (E.cy > 0) E.cx = E.terminalCols - 1;
+            // E.cy = (E.cy - 1 < 0) ? 0 : E.cy - 1; one, why did I write it this way, 2, commented out for now as we don't care about left to right scrolling
+            if (E.scrollCol > 0) E.scrollCol --;
         }
         else {
             E.cx --;
         }
     }
+    // if y > 0, we want to move the cursor down (i.e., away from y=0, which is the top of the screen)
     if (y > 0){
-        if (E.cy + 1 <= E.screenRows){
+        // if we would move off the bottom of the current screen (this is -2 instead of -1 so that we don't scroll onto the status bar)
+        if (E.cy + 1 <= (E.terminalRows - 2)){
             E.cy ++;
         }
-    }    
+        else {
+            E.scrollRow ++;
+        }
+    }
+    // if y < 0, we want to move the cursor up (i.e., towards y=0, which is the top of the screen)
     if (y < 0){
+        // if we would move off the top of the current screen
         if (E.cy - 1 >= 0){
+            // adjust scrollRow here
             E.cy --;
+        }
+        else {
+            if (E.scrollRow > 0) E.scrollRow --;
         }
     }
 }
